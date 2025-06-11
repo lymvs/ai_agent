@@ -6,6 +6,7 @@ from google import genai
 from google.genai import types
 
 from prompts import system_prompt
+from call_function import available_functions
 
 def main():
     load_dotenv()
@@ -32,20 +33,47 @@ def main():
             parts=[types.Part(text=prompt)],
             ),
     ]
+
+    schema_get_files_info = types.FunctionDeclaration(
+        name="get_files_info",
+        description="Lists files in the specified directory along with their sizes, constrained to the working directory.",
+        parameters=types.Schema(
+            type=types.Type.OBJECT,
+            properties={
+                "directory": types.Schema(
+                    type=types.Type.STRING,
+                    description="The directory to list files from, relative to the working directory. If not provided, lists files in the working directory itself.",
+                ),
+            },
+        ),
+    )
+
+    available_functions = types.Tool(
+        function_declarations=[
+            schema_get_files_info,
+            ],
+            )
+
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
         contents=messages,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
+        config=types.GenerateContentConfig(
+            tools=[available_functions],
+            system_instruction=system_prompt),
         )
 
     prompt_tokens = response.usage_metadata.prompt_token_count
     response_tokens = response.usage_metadata.candidates_token_count
+    function_call_list = response.function_calls
 
     print(f"User prompt: {prompt}")
     print(f"Prompt tokens: {prompt_tokens}")
     print(f"Response tokens: {response_tokens}")
     print(f"Response text: {response.text}")
+    if function_call_list is not None:
+        for function_call_part in function_call_list:
+            print(f"Calling function: {function_call_part.name}({function_call_part.args})")
 
 if __name__ == "__main__":
     main()
