@@ -27,37 +27,47 @@ def main():
     if verbose:
         print(f"User prompt: {prompt}\n")
 
-    messages = [
-        types.Content(
-            role="user",
-            parts=[types.Part(text=prompt)],
-            ),
-    ]
 
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-001",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions],
-            system_instruction=system_prompt),
-        )
+    for i in range(20):
+        messages = [
+            types.Content(
+                role="user",
+                parts=[types.Part(text=prompt)],
+                ),
+        ]
 
-    prompt_tokens = response.usage_metadata.prompt_token_count
-    response_tokens = response.usage_metadata.candidates_token_count
-    function_call_list = response.function_calls
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions],
+                system_instruction=system_prompt),
+            )
 
-    print(f"User prompt: {prompt}")
-    print(f"Prompt tokens: {prompt_tokens}")
-    print(f"Response tokens: {response_tokens}")
-    print(f"Response text: {response.text}")
-    if function_call_list is not None:
-        for function_call_part in function_call_list:
-            # print(f"Calling function: {function_call_part.name}({function_call_part.args})")
-            function_call_result = call_function(function_call_part, verbose)
-            if not function_call_result.parts[0].function_response.response:
-                raise Exception("Error: Function couldn't be called")
-            print(f"-> {function_call_result.parts[0].function_response.response}")
+        if response.candidates is not None:
+                for candidate in response.candidates:
+                    if candidate is not None:
+                        messages.append(candidate.content)
+
+        prompt_tokens = response.usage_metadata.prompt_token_count
+        response_tokens = response.usage_metadata.candidates_token_count
+        function_call_list = response.function_calls
+
+        print(f"User prompt: {prompt}")
+        print(f"Prompt tokens: {prompt_tokens}")
+        print(f"Response tokens: {response_tokens}")
+        print(f"Response text: {response.text}")
+        if function_call_list is not None:
+            for function_call_part in function_call_list:
+                # print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+                function_call_result = call_function(function_call_part, verbose)
+                if not function_call_result.parts[0].function_response.response:
+                    raise Exception("Error: Function couldn't be called")
+                print(f"-> {function_call_result.parts[0].function_response.response}")
+                messages.append(function_call_result.parts[0].function_response.response)
+
+    print(response.text)
 
 if __name__ == "__main__":
     main()
