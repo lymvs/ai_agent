@@ -27,15 +27,14 @@ def main():
     if verbose:
         print(f"User prompt: {prompt}\n")
 
+    messages = [
+        types.Content(
+            role="user",
+            parts=[types.Part(text=prompt)],
+            ),
+    ]
 
     for i in range(20):
-        messages = [
-            types.Content(
-                role="user",
-                parts=[types.Part(text=prompt)],
-                ),
-        ]
-
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
@@ -45,14 +44,14 @@ def main():
                 system_instruction=system_prompt),
             )
 
-        if response.candidates is not None:
-                for candidate in response.candidates:
-                    if candidate is not None:
-                        messages.append(candidate.content)
-
         prompt_tokens = response.usage_metadata.prompt_token_count
         response_tokens = response.usage_metadata.candidates_token_count
         function_call_list = response.function_calls
+
+        if response.candidates is not None:
+            for candidate in response.candidates:
+                if candidate is not None:
+                    messages.append(candidate.content)
 
         print(f"User prompt: {prompt}")
         print(f"Prompt tokens: {prompt_tokens}")
@@ -65,7 +64,9 @@ def main():
                 if not function_call_result.parts[0].function_response.response:
                     raise Exception("Error: Function couldn't be called")
                 print(f"-> {function_call_result.parts[0].function_response.response}")
-                messages.append(function_call_result.parts[0].function_response.response)
+                messages.append(function_call_result)
+        else:
+            break
 
     print(response.text)
 
