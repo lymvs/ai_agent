@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 def main():
     load_dotenv()
@@ -34,26 +34,6 @@ def main():
             ),
     ]
 
-    schema_get_files_info = types.FunctionDeclaration(
-        name="get_files_info",
-        description="Lists files in the specified directory along with their sizes, constrained to the working directory.",
-        parameters=types.Schema(
-            type=types.Type.OBJECT,
-            properties={
-                "directory": types.Schema(
-                    type=types.Type.STRING,
-                    description="The directory to list files from, relative to the working directory. If not provided, lists files in the working directory itself.",
-                ),
-            },
-        ),
-    )
-
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-            ],
-            )
-
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
@@ -73,7 +53,11 @@ def main():
     print(f"Response text: {response.text}")
     if function_call_list is not None:
         for function_call_part in function_call_list:
-            print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+            # print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+            function_call_result = call_function(function_call_part, verbose)
+            if not function_call_result.parts[0].function_response.response:
+                raise Exception("Error: Function couldn't be called")
+            print(f"-> {function_call_result.parts[0].function_response.response}")
 
 if __name__ == "__main__":
     main()

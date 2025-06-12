@@ -24,7 +24,7 @@ def get_files_info(working_directory, directory=None):
     except Exception as e:
         return f"Error: {e}"
 
-schema_get_files_info = types.FunctionDeclaration(
+schema_get_files_info = types.FunctionDeclarationDict(
     name="get_files_info",
     description="Lists files in the specified directory along with their sizes, constrained to the working directory.",
     parameters=types.Schema(
